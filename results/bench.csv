@@ -1,0 +1,4 @@
+structure,operations,ns_per_op,bytes_per_stored_byte
+ring_buffer,20000000,2.78,1.00
+linked_list_queue,20000000,12.57,32
+linked_list_queue_avr,0,,5

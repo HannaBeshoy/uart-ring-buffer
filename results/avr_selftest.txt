@@ -1,0 +1,4 @@
+ring buffer self-test on ATmega328P, 64-byte buffer, a byte every 87 us
+phase 1: sent 20000, received 20000, dropped 0, order errors 0
+phase 2: sent 11602, received 10988, dropped 614, gaps 614 + 0 at the end, order errors 0
+SELF-TEST PASS
