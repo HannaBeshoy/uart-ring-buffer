@@ -47,6 +47,51 @@ anode_t *avl_insert(anode_t *t, int key, int *rotations)
     return t;
 }
 
+/* Restore the balance at t after a deletion below it (pp. 177-178): single
+   rotation in cases (2, 1) and (2, 0), double rotation in case (2, -1), and
+   the mirror images. The subtree may come back one level lower, so the
+   caller, one level up, checks its own balance again. */
+static anode_t *rebalance_after_delete(anode_t *t, int *rotations)
+{
+    fix(t);
+    int b = balance(t);
+    if (b < -1) {
+        if (balance(t->left) > 0) { t->left = rotate_left(t->left); (*rotations)++; }
+        (*rotations)++;
+        return rotate_right(t);
+    }
+    if (b > 1) {
+        if (balance(t->right) < 0) { t->right = rotate_right(t->right); (*rotations)++; }
+        (*rotations)++;
+        return rotate_left(t);
+    }
+    return t;
+}
+
+anode_t *avl_delete(anode_t *t, int key, int *rotations)
+{
+    if (!t) return NULL;                            /* not in the tree: nothing to do */
+    if (key < t->key) t->left = avl_delete(t->left, key, rotations);
+    else if (key > t->key) t->right = avl_delete(t->right, key, rotations);
+    else if (!t->left || !t->right) {               /* no child or one child: lift the child */
+        anode_t *child = t->left ? t->left : t->right;
+        free(t);
+        return child;                               /* already balanced, heights unchanged */
+    } else {                                        /* two children: take the in-order successor's key */
+        anode_t *next = t->right;
+        while (next->left) next = next->left;
+        t->key = next->key;
+        t->right = avl_delete(t->right, next->key, rotations);
+    }
+    return rebalance_after_delete(t, rotations);
+}
+
+bool avl_contains(const anode_t *t, int key)
+{
+    while (t && t->key != key) t = key < t->key ? t->left : t->right;
+    return t != NULL;
+}
+
 bool avl_is_balanced(const anode_t *t)
 {
     if (!t) return true;

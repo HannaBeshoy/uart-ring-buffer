@@ -241,6 +241,129 @@ TEST(avl_stays_balanced)
     avl_free(t); avl_free(d); bst_free(plain);
 }
 
+TEST(avl_deletion)
+{
+    /* pp. 177-178: delete, then rotate at every broken node on the way up */
+    anode_t *t = NULL;
+    int rot = 0, out[1023];
+    for (int i = 1; i <= 1023; i++) t = avl_insert(t, i, &rot);
+    bool ok = true;
+    int left = 1023;
+    for (int i = 1; i <= 1023; i += 2) {                      /* every odd key */
+        t = avl_delete(t, i, &rot); left--;
+        ok = ok && avl_is_balanced(t) && !avl_contains(t, i);
+    }
+    CHECK(ok && avl_inorder(t, out, 0) == (size_t)left && sorted(out, left) && out[0] == 2 && out[left - 1] == 1022);
+    CHECK(avl_height(t) == 9);                                /* 511 keys: still a perfect tree's height */
+    t = avl_delete(t, 5000, &rot);                            /* absent key: nothing changes */
+    CHECK(avl_inorder(t, out, 0) == (size_t)left);
+    unsigned seed = 7;                                        /* random order down to the empty tree */
+    while (left > 0) {
+        seed = seed * 1103515245u + 12345u;
+        int key = out[(seed >> 8) % (unsigned)left];
+        t = avl_delete(t, key, &rot);
+        left = (int)avl_inorder(t, out, 0);
+        ok = ok && avl_is_balanced(t);
+    }
+    CHECK(ok && t == NULL);
+
+    /* one deletion, two rotations: a Fibonacci-shaped tree is as thin as an AVL tree can be,
+       so removing a key from its short side breaks the balance at two levels */
+    anode_t *f = NULL; rot = 0;
+    int keys[] = { 8, 5, 11, 3, 7, 10, 12, 2, 4, 6, 9, 1 };
+    for (size_t i = 0; i < sizeof keys / sizeof keys[0]; i++) f = avl_insert(f, keys[i], &rot);
+    CHECK(rot == 0 && avl_height(f) == 5);
+    f = avl_delete(f, 12, &rot);
+    CHECK(rot == 2 && avl_is_balanced(f) && avl_height(f) == 4 && f->key == 5);
+    /* a node with two children: its in-order successor takes its place */
+    f = avl_delete(f, 5, &rot);
+    CHECK(avl_is_balanced(f) && !avl_contains(f, 5) && avl_inorder(f, out, 0) == 10 && sorted(out, 10));
+    avl_free(f);
+}
+
+static int log2_ceil(int n) { int k = 0; while ((1 << k) < n) k++; return k; }
+
+TEST(red_black_tree)
+{
+    /* pp. 179-181: the colour rules hold after every insertion, and they bound the height */
+    rbnode_t *t = NULL;
+    int rot = 0, recol = 0, out[4096];
+    bool ok = true;
+    for (int i = 1; i <= 4095; i++) {                         /* increasing keys: the worst case for a plain BST */
+        t = rb_insert(t, i, &rot, &recol);
+        if (i < 300 || i % 97 == 0) ok = ok && rb_is_valid(t);
+    }
+    CHECK(ok && rb_is_valid(t));
+    CHECK(rb_inorder(t, out, 0) == 4095 && sorted(out, 4095));
+    CHECK(rb_height(t) <= 2 * log2_ceil(4095 + 1));           /* theorem on p. 181: at most 2 log n */
+    CHECK(rb_height(t) <= 2 * (rb_black_height(t) - 1));      /* the furthest leaf is at most twice the black height */
+    CHECK(rot > 0 && recol > 0);
+    CHECK(rb_contains(t, 2048) && !rb_contains(t, 0) && !rb_contains(t, 4096));
+    t = rb_insert(t, 2048, &rot, &recol);                     /* a duplicate changes nothing */
+    CHECK(rb_inorder(t, out, 0) == 4095);
+    rb_free(t);
+
+    /* random keys */
+    t = NULL; ok = true;
+    unsigned seed = 2026;
+    int n = 0;
+    for (int i = 0; i < 3000; i++) {
+        seed = seed * 1103515245u + 12345u;
+        int key = (int)((seed >> 8) % 100000u);
+        if (!rb_contains(t, key)) n++;
+        t = rb_insert(t, key, &rot, &recol);
+        if (i % 50 == 0) ok = ok && rb_is_valid(t);
+    }
+    CHECK(ok && rb_is_valid(t) && rb_inorder(t, out, 0) == (size_t)n && sorted(out, n));
+    CHECK(rb_height(t) <= 2 * log2_ceil(n + 1));
+
+    /* the checker itself must reject broken trees */
+    rbnode_t a = { 1, true, NULL, NULL }, b = { 3, true, NULL, NULL }, root = { 2, false, &a, &b };
+    CHECK(rb_is_valid(&root));
+    root.red = true;  CHECK(!rb_is_valid(&root));             /* red root */
+    root.red = false; b.red = false; CHECK(!rb_is_valid(&root) && rb_black_height(&root) == -1);   /* unequal black heights */
+    b.red = true; rbnode_t c = { 0, true, NULL, NULL }; a.left = &c;
+    CHECK(!rb_is_valid(&root));                               /* a red node with a red child */
+    a.left = NULL; a.key = 5; CHECK(!rb_is_valid(&root));     /* search order broken */
+    rb_free(t);
+}
+
+TEST(parallel_min_and_sum)
+{
+    /* pp. 215, 217: the slide's example 8 6 4 3 2 5 1 7 takes 3 rounds with 4 processors */
+    int ex[] = { 8, 6, 4, 3, 2, 5, 1, 7 };
+    par_stats_t st;
+    CHECK(par_min(ex, 8, &st) == 1 && st.rounds == 3 && st.processors == 4 && st.operations == 7);
+    CHECK(par_sum(ex, 8, &st) == 36 && st.rounds == 3 && st.processors == 4 && st.operations == 7);
+
+    static int a[100000];
+    unsigned seed = 5;
+    long want_sum = 0; int want_min = 1 << 30;
+    for (int i = 0; i < 100000; i++) {
+        seed = seed * 1103515245u + 12345u;
+        a[i] = (int)((seed >> 8) % 2000001u) - 1000000;
+        want_sum += a[i];
+        if (a[i] < want_min) want_min = a[i];
+    }
+    bool ok = true;
+    int sizes[] = { 1, 2, 3, 5, 8, 100, 1000, 1023, 1024, 1025, 100000 };
+    for (size_t k = 0; k < sizeof sizes / sizeof sizes[0]; k++) {
+        int n = sizes[k], mn = a[0]; long sm = 0;
+        for (int i = 0; i < n; i++) { sm += a[i]; if (a[i] < mn) mn = a[i]; }
+        ok = ok && par_min(a, (size_t)n, &st) == mn;
+        ok = ok && st.rounds == log2_ceil(n) && st.operations == n - 1 && st.processors == n / 2;
+        ok = ok && par_sum(a, (size_t)n, &st) == sm && st.rounds == log2_ceil(n) && st.operations == n - 1;
+    }
+    CHECK(ok);                                                /* log2 n rounds, n/2 processors, n-1 operations */
+    CHECK(par_sum(a, 0, &st) == 0 && st.rounds == 0);
+
+    for (int threads = 1; threads <= 8; threads++)            /* real threads give the same sum */
+        CHECK(par_sum_threads(a, 100000, threads) == want_sum);
+    CHECK(par_sum_threads(a, 3, 8) == (long)a[0] + a[1] + a[2]);   /* more threads than elements */
+    CHECK(par_sum_threads(a, 0, 4) == 0);
+    CHECK(par_min(a, 100000, &st) == want_min && st.rounds == 17);
+}
+
 TEST(graph_algorithms)
 {
     graph_t g; int order[G_MAX], dist[G_MAX];
@@ -276,6 +399,9 @@ int main(void)
     RUN(hash_table_chaining);
     RUN(binary_search_tree);
     RUN(avl_stays_balanced);
+    RUN(avl_deletion);
+    RUN(red_black_tree);
+    RUN(parallel_min_and_sum);
     RUN(graph_algorithms);
     return REPORT();
 }

@@ -11,7 +11,7 @@ A serial port delivers a byte every 87 µs at 115200 baud, whether or not the pr
 - [x] 10 unit tests (2,323 checks), including 200,000 random operations against a reference model and 2 million bytes between two threads
 - [x] Self-test on a simulated ATmega328P (simavr): 31,602 bytes from a timer interrupt, none reordered, drops exactly as predicted
 - [x] Arduino sketch that uses the buffer as the real UART receive buffer
-- [x] 15 lecture demos (163 checks): lists, stacks, queues, sparse matrices, seven sorting algorithms, heaps, hash tables, binary search trees, AVL trees, graphs
+- [x] 18 lecture demos (199 checks): lists, stacks, queues, sparse matrices, seven sorting algorithms, heaps, hash tables, binary search trees, AVL trees with deletion, red-black trees, parallel minimum and sum, graphs
 - [ ] Lab day: the sketch on a real Arduino ([test sheet](docs/LAB_DAY.md))
 
 ## How big must the buffer be?
@@ -59,7 +59,9 @@ typedef struct {
 | `stack.c`, `array_queue.c`, `sparse.c` | stack with bracket matching and RPN; cyclic array queue; triplet sparse matrix (pp. 63–84) |
 | `sort.c` | bubble (tuned), insertion, ranking, merge (recursive and iterative), quick, heap, bin sort; parallel odd-even sort; binary search (pp. 89–100, 214) |
 | `heap.c`, `hash.c` | minimum heap and priority queue; open addressing with linear probing and "deleted" marks, chaining (pp. 101–137) |
-| `bst.c`, `avl.c` | binary search tree with successor and deletion, three traversals and breadth-first; AVL insertion with single and double rotations (pp. 138–178) |
+| `bst.c`, `avl.c` | binary search tree with successor and deletion, three traversals and breadth-first; AVL insertion and deletion with single and double rotations (pp. 138–178) |
+| `rbtree.c` | red-black tree: insertion (left-leaning variant) and a checker for the colour rules; height at most 2 log n (pp. 179–181) |
+| `parallel.c` | parallel minimum and parallel addition in log n rounds with n/2 processors, simulated round by round, and the sum on real threads (pp. 209–217) |
 | `graph.c` | BFS, DFS, Euler circuit test, 2-colouring, Dijkstra (pp. 193–208) |
 
 The hash-table test reproduces the worked example on p. 107 and found a slip in it: the slide gives ĥ(13) = 3, but 13 · 1.618 = 21.034, so ĥ(13) = 0. With the slide's value the test gets the slide's table; with the correct value, 13 lands in slot 2 and 8 in slot 4.

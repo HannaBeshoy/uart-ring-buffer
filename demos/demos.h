@@ -105,10 +105,28 @@ void bst_free(tnode_t *t);
 /* ---- avl.c: self-balancing AVL tree (pp. 162-178) --------------------------------- */
 typedef struct anode { int key, height; struct anode *left, *right; } anode_t;
 anode_t *avl_insert(anode_t *root, int key, int *rotations);
+anode_t *avl_delete(anode_t *root, int key, int *rotations);   /* pp. 177-178 */
+bool avl_contains(const anode_t *t, int key);
 bool avl_is_balanced(const anode_t *t);
 int avl_height(const anode_t *t);
 size_t avl_inorder(const anode_t *t, int *out, size_t i);
 void avl_free(anode_t *t);
+
+/* ---- rbtree.c: red-black tree (pp. 179-181) ------------------------------------------ */
+typedef struct rbnode { int key; bool red; struct rbnode *left, *right; } rbnode_t;
+rbnode_t *rb_insert(rbnode_t *root, int key, int *rotations, int *recolourings);
+bool rb_contains(const rbnode_t *t, int key);
+bool rb_is_valid(const rbnode_t *root);                  /* the colour rules of p. 179 and the search order */
+int rb_black_height(const rbnode_t *t);                  /* black nodes to a leaf, the empty leaf included; -1 if unequal */
+int rb_height(const rbnode_t *t);
+size_t rb_inorder(const rbnode_t *t, int *out, size_t i);
+void rb_free(rbnode_t *t);
+
+/* ---- parallel.c: parallel algorithms on the PRAM model (pp. 209-217) ---------------- */
+typedef struct { int rounds; int processors; long operations; } par_stats_t;
+int par_min(const int *a, size_t n, par_stats_t *st);    /* tournament, simulated rounds (p. 215) */
+long par_sum(const int *a, size_t n, par_stats_t *st);   /* pairwise addition, simulated rounds (p. 217) */
+long par_sum_threads(const int *a, size_t n, int threads); /* the same sum on real threads */
 
 /* ---- graph.c: graphs (pp. 193-208) --------------------------------------------------- */
 #define G_MAX 16

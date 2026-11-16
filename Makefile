@@ -17,7 +17,7 @@ build/test_ring_buffer: tests/test_ring_buffer.c src/ring_buffer.c src/list_queu
 	$(CC) $(CFLAGS) -pthread $^ -o $@
 
 build/test_demos: tests/test_demos.c $(DEMOS) | build
-	$(CC) $(CFLAGS) $(SAN) -Idemos $^ -o $@ -lm
+	$(CC) $(CFLAGS) $(SAN) -pthread -Idemos $^ -o $@ -lm
 
 build/bench: bench/bench.c src/ring_buffer.c src/list_queue.c | build
 	$(CC) -std=c11 -O2 -Wall $^ -o $@
